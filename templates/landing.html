@@ -8,7 +8,11 @@
     <div class="hero-inner">
         <div class="hero-badge">
             <span class="hero-badge-dot"></span>
-            Free to use · No credit card needed
+            {% if user_name %}
+                Welcome back, {{ user_name }}!
+            {% else %}
+                Free to use · No credit card needed
+            {% endif %}
         </div>
         <h1 class="hero-title">
             Track every rupee.<br>
