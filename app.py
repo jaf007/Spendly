@@ -88,7 +88,7 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user_id" in session:
-        return redirect(url_for("landing"))
+        return redirect(url_for("profile"))
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -108,7 +108,7 @@ def login():
             )
 
         session["user_id"] = user["id"]
-        return redirect(url_for("landing"))
+        return redirect(url_for("profile"))
 
     return render_template("login.html")
 
@@ -135,7 +135,44 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user = {
+        "name": "Nitish Kumar",
+        "email": "nitish@example.com",
+        "initials": "NK",
+        "member_since": "March 2024",
+    }
+
+    summary_stats = [
+        {"label": "Total spent", "value": "₹28,540", "delta": "this year", "delta_style": "muted"},
+        {"label": "Transactions", "value": "47", "delta": "all time", "delta_style": "muted"},
+        {"label": "Top category", "value": "Food", "delta": "32% of spend", "delta_style": "positive"},
+    ]
+
+    transactions = [
+        {"date": "12 Oct 2026", "description": "Groceries at Whole Foods", "category": "Food", "amount": "₹1,240.00"},
+        {"date": "10 Oct 2026", "description": "Uber ride to work", "category": "Transport", "amount": "₹380.00"},
+        {"date": "05 Oct 2026", "description": "Electricity bill", "category": "Bills", "amount": "₹2,150.00"},
+        {"date": "01 Oct 2026", "description": "Movie tickets", "category": "Entertainment", "amount": "₹640.00"},
+        {"date": "28 Sep 2026", "description": "Pharmacy — prescription refill", "category": "Health", "amount": "₹520.00"},
+    ]
+
+    category_breakdown = [
+        {"name": "Food", "amount": "₹9,120", "width_class": "w-80"},
+        {"name": "Bills", "amount": "₹6,440", "width_class": "w-60"},
+        {"name": "Transport", "amount": "₹4,980", "width_class": "w-50"},
+        {"name": "Entertainment", "amount": "₹3,210", "width_class": "w-40"},
+    ]
+
+    return render_template(
+        "profile.html",
+        user=user,
+        summary_stats=summary_stats,
+        transactions=transactions,
+        category_breakdown=category_breakdown,
+    )
 
 
 @app.route("/expenses/add")
