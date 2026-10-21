@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -45,10 +46,10 @@ def register():
                 "register.html", error="All fields are required.", name=name, email=email
             )
 
-        if len(password) < 8:
+        if len(password) < 4:
             return render_template(
                 "register.html",
-                error="Password must be at least 8 characters.",
+                error="Password must be at least 4 characters.",
                 name=name,
                 email=email,
             )
@@ -138,33 +139,32 @@ def profile():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    user = {
-        "name": "Nitish Kumar",
-        "email": "nitish@example.com",
-        "initials": "NK",
-        "member_since": "March 2024",
-    }
+    user_id = session["user_id"]
 
-    summary_stats = [
-        {"label": "Total spent", "value": "₹28,540", "delta": "this year", "delta_style": "muted"},
-        {"label": "Transactions", "value": "47", "delta": "all time", "delta_style": "muted"},
-        {"label": "Top category", "value": "Food", "delta": "32% of spend", "delta_style": "positive"},
-    ]
+    conn = get_db()
+    try:
+        user_row = conn.execute(
+            "SELECT name, email, created_at FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
 
-    transactions = [
-        {"date": "12 Oct 2026", "description": "Groceries at Whole Foods", "category": "Food", "amount": "₹1,240.00"},
-        {"date": "10 Oct 2026", "description": "Uber ride to work", "category": "Transport", "amount": "₹380.00"},
-        {"date": "05 Oct 2026", "description": "Electricity bill", "category": "Bills", "amount": "₹2,150.00"},
-        {"date": "01 Oct 2026", "description": "Movie tickets", "category": "Entertainment", "amount": "₹640.00"},
-        {"date": "28 Sep 2026", "description": "Pharmacy — prescription refill", "category": "Health", "amount": "₹520.00"},
-    ]
+        name_parts = user_row["name"].split()
+        initials = "".join(part[0] for part in name_parts[:2]).upper()
+        member_since = datetime.strptime(
+            user_row["created_at"], "%Y-%m-%d %H:%M:%S"
+        ).strftime("%B %Y")
 
-    category_breakdown = [
-        {"name": "Food", "amount": "₹9,120", "width_class": "w-80"},
-        {"name": "Bills", "amount": "₹6,440", "width_class": "w-60"},
-        {"name": "Transport", "amount": "₹4,980", "width_class": "w-50"},
-        {"name": "Entertainment", "amount": "₹3,210", "width_class": "w-40"},
-    ]
+        user = {
+            "name": user_row["name"],
+            "email": user_row["email"],
+            "initials": initials,
+            "member_since": member_since,
+        }
+
+        summary_stats = _get_summary_stats(conn, user_id)
+        transactions = _get_recent_transactions(conn, user_id)
+        category_breakdown = _get_category_breakdown(conn, user_id)
+    finally:
+        conn.close()
 
     return render_template(
         "profile.html",
@@ -188,6 +188,112 @@ def edit_expense(id):
 @app.route("/expenses/<int:id>/delete")
 def delete_expense(id):
     return "Delete expense — coming in Step 9"
+
+
+# ------------------------------------------------------------------ #
+# Profile page data helpers                                           #
+# ------------------------------------------------------------------ #
+
+def _get_recent_transactions(conn, user_id, limit=5):
+    rows = conn.execute(
+        "SELECT date, description, category, amount FROM expenses "
+        "WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?",
+        (user_id, limit),
+    ).fetchall()
+
+    return [
+        {
+            "date": datetime.strptime(row["date"], "%Y-%m-%d").strftime("%d %b %Y"),
+            "description": row["description"],
+            "category": row["category"],
+            "amount": f"₹{row['amount']:,.2f}",
+        }
+        for row in rows
+    ]
+
+
+def _get_summary_stats(conn, user_id):
+    total_row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    total = total_row["total"]
+
+    count_row = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM expenses WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    count = count_row["cnt"]
+
+    if total == 0 or count == 0:
+        top_category_stat = {
+            "label": "Top category",
+            "value": "—",
+            "delta": "no spend yet",
+            "delta_style": "muted",
+        }
+    else:
+        top_category_row = conn.execute(
+            """
+            SELECT category, SUM(amount) AS total
+            FROM expenses
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY total DESC
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+        pct = round(top_category_row["total"] / total * 100)
+        top_category_stat = {
+            "label": "Top category",
+            "value": top_category_row["category"],
+            "delta": f"{pct}% of spend",
+            "delta_style": "positive",
+        }
+
+    return [
+        {
+            "label": "Total spent",
+            "value": f"₹{total:,.2f}",
+            "delta": "this year",
+            "delta_style": "muted",
+        },
+        {
+            "label": "Transactions",
+            "value": str(count),
+            "delta": "all time",
+            "delta_style": "muted",
+        },
+        top_category_stat,
+    ]
+
+
+def _get_category_breakdown(conn, user_id):
+    rows = conn.execute(
+        "SELECT category, SUM(amount) AS total FROM expenses "
+        "WHERE user_id = ? GROUP BY category ORDER BY total DESC",
+        (user_id,),
+    ).fetchall()
+
+    if not rows:
+        return []
+
+    max_total = rows[0]["total"]
+
+    breakdown = []
+    for row in rows:
+        pct = round((row["total"] / max_total) * 10) * 10
+        pct = max(10, min(100, pct))
+        breakdown.append(
+            {
+                "name": row["category"],
+                "amount": f"₹{row['total']:,.2f}",
+                "width_class": f"w-{pct}",
+            }
+        )
+
+    return breakdown
 
 
 # ------------------------------------------------------------------ #
