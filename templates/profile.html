@@ -16,6 +16,38 @@
             </div>
         </div>
 
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-bar">
+            {% for message in messages %}
+            <p class="flash-message">{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="profile-card filter-bar">
+            <div class="filter-presets">
+                {% for preset in presets %}
+                <a href="{{ url_for('profile', date_from=preset.date_from, date_to=preset.date_to) }}"
+                   class="filter-preset-btn{% if preset.active %} filter-preset-btn-active{% endif %}">
+                    {{ preset.label }}
+                </a>
+                {% endfor %}
+            </div>
+            <form method="get" action="{{ url_for('profile') }}" class="filter-custom-form">
+                <label class="filter-field">From
+                    <input type="date" name="date_from" class="form-input" value="{{ filter_from }}">
+                </label>
+                <label class="filter-field">To
+                    <input type="date" name="date_to" class="form-input" value="{{ filter_to }}">
+                </label>
+                <button type="submit" class="filter-apply-btn{% if active_filter == 'custom' %} filter-apply-btn-active{% endif %}">
+                    Apply
+                </button>
+            </form>
+        </div>
+
         <div class="stat-grid profile-stat-grid">
             {% for stat in summary_stats %}
             <div class="stat-tile">
@@ -41,6 +73,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% if transactions %}
                             {% for tx in transactions %}
                             <tr>
                                 <td>{{ tx.date }}</td>
@@ -49,6 +82,11 @@
                                 <td class="tx-amount-col">{{ tx.amount }}</td>
                             </tr>
                             {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="tx-empty-state">No transactions found for this date range.</td>
+                            </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>

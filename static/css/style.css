@@ -697,6 +697,104 @@ a { color: inherit; text-decoration: none; }
     margin-bottom: 1.25rem;
 }
 
+.flash-bar {
+    background: var(--danger-light);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    color: var(--danger);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 2.5rem;
+}
+
+.filter-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.filter-preset-btn {
+    display: inline-block;
+    background: transparent;
+    color: var(--ink-soft);
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.filter-preset-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+.filter-preset-btn-active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.filter-custom-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    gap: 0.35rem;
+}
+
+.filter-field .form-input {
+    width: auto;
+}
+
+.filter-apply-btn {
+    margin-left: 0.75rem;
+    padding: 0.6rem 1.25rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.filter-apply-btn:hover { background: var(--accent); }
+
+.filter-apply-btn-active {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.tx-empty-state {
+    text-align: center;
+    color: var(--ink-muted);
+    padding: 1.5rem 0.875rem;
+}
+
 .profile-user-card {
     display: flex;
     align-items: center;
@@ -742,6 +840,8 @@ a { color: inherit; text-decoration: none; }
 
 .tx-table-wrap {
     overflow-x: auto;
+    max-height: 360px;
+    overflow-y: auto;
 }
 
 .tx-table {
