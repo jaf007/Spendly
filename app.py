@@ -1,11 +1,12 @@
 import calendar
+import math
 import sqlite3
 from datetime import date, datetime
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database import get_db, init_db, seed_db
+from database import CATEGORIES, get_db, init_db, seed_db
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-production"
@@ -235,9 +236,62 @@ def analytics():
     return render_template("analytics.html")
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount", "").strip()
+        category = request.form.get("category", "").strip()
+        date_raw = request.form.get("date", "").strip()
+        description = request.form.get("description", "").strip()
+
+        def rerender(error):
+            return render_template(
+                "add_expense.html",
+                error=error,
+                categories=CATEGORIES,
+                amount=amount_raw, category=category,
+                date=date_raw, description=description,
+            )
+
+        try:
+            amount = float(amount_raw)
+            if not math.isfinite(amount) or amount <= 0:
+                raise ValueError
+        except ValueError:
+            return rerender("Enter a valid amount greater than 0.")
+
+        if category not in CATEGORIES:
+            return rerender("Select a valid category.")
+
+        try:
+            datetime.strptime(date_raw, "%Y-%m-%d")
+        except ValueError:
+            return rerender("Enter a valid date.")
+
+        if len(description) > 200:
+            return rerender("Description must be 200 characters or fewer.")
+
+        description = description or None
+
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO expenses (user_id, amount, category, date, description) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (session["user_id"], amount, category, date_raw, description),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        return redirect(url_for("profile"))
+
+    return render_template(
+        "add_expense.html", categories=CATEGORIES, date=date.today().isoformat()
+    )
 
 
 @app.route("/expenses/<int:id>/edit")
