@@ -930,6 +930,22 @@ a { color: inherit; text-decoration: none; }
     text-decoration: underline;
 }
 
+.tx-delete-link {
+    color: var(--danger);
+    font-weight: 500;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 0.75rem;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.tx-delete-link:hover {
+    text-decoration: underline;
+}
+
 .badge {
     display: inline-block;
     padding: 0.25rem 0.7rem;

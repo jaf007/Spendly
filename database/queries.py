@@ -29,3 +29,11 @@ def update_expense(conn, expense_id, user_id, amount, category, date, descriptio
         (amount, category, date, description, expense_id, user_id),
     )
     conn.commit()
+
+
+def delete_expense(conn, expense_id, user_id):
+    conn.execute(
+        "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id),
+    )
+    conn.commit()

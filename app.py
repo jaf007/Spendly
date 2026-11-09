@@ -7,7 +7,12 @@ from flask import Flask, abort, flash, redirect, render_template, request, sessi
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import CATEGORIES, get_db, init_db, seed_db
-from database.queries import get_expense_by_id, insert_expense, update_expense
+from database.queries import (
+    delete_expense as delete_expense_query,
+    get_expense_by_id,
+    insert_expense,
+    update_expense,
+)
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-production"
@@ -353,9 +358,23 @@ def edit_expense(id):
         conn.close()
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    try:
+        expense = get_expense_by_id(conn, id, session["user_id"])
+        if expense is None:
+            abort(404)
+
+        delete_expense_query(conn, id, session["user_id"])
+    finally:
+        conn.close()
+
+    flash("Expense deleted", "success")
+    return redirect(url_for("profile"))
 
 
 # ------------------------------------------------------------------ #
