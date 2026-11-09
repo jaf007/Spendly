@@ -16,11 +16,11 @@
             </div>
         </div>
 
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-bar">
-            {% for message in messages %}
-            <p class="flash-message">{{ message }}</p>
+            {% for category, message in messages %}
+            <p class="flash-message flash-message-{{ category }}"{% if category == 'success' %} data-auto-dismiss="10000"{% endif %}>{{ message }}</p>
             {% endfor %}
         </div>
         {% endif %}
@@ -73,6 +73,7 @@
                                 <th>Description</th>
                                 <th>Category</th>
                                 <th class="tx-amount-col">Amount</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,11 +84,12 @@
                                 <td>{{ tx.description }}</td>
                                 <td><span class="badge badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
                                 <td class="tx-amount-col">{{ tx.amount }}</td>
+                                <td><a href="{{ url_for('edit_expense', id=tx.id) }}" class="tx-edit-link">Edit</a></td>
                             </tr>
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="4" class="tx-empty-state">No transactions found for this date range.</td>
+                                <td colspan="5" class="tx-empty-state">No transactions found for this date range.</td>
                             </tr>
                             {% endif %}
                         </tbody>
