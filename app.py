@@ -3,10 +3,11 @@ import math
 import sqlite3
 from datetime import date, datetime
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import CATEGORIES, get_db, init_db, seed_db
+from database.queries import get_expense_by_id, insert_expense, update_expense
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-production"
@@ -276,16 +277,7 @@ def add_expense():
 
         description = description or None
 
-        conn = get_db()
-        try:
-            conn.execute(
-                "INSERT INTO expenses (user_id, amount, category, date, description) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (session["user_id"], amount, category, date_raw, description),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        insert_expense(session["user_id"], amount, category, date_raw, description)
 
         return redirect(url_for("profile"))
 
@@ -294,9 +286,71 @@ def add_expense():
     )
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    try:
+        expense = get_expense_by_id(conn, id, session["user_id"])
+        if expense is None:
+            abort(404)
+
+        if request.method == "POST":
+            amount_raw = request.form.get("amount", "").strip()
+            category = request.form.get("category", "").strip()
+            date_raw = request.form.get("date", "").strip()
+            description = request.form.get("description", "").strip()
+
+            def rerender(error):
+                return render_template(
+                    "edit_expense.html",
+                    error=error,
+                    categories=CATEGORIES,
+                    expense_id=id,
+                    amount=amount_raw, category=category,
+                    date=date_raw, description=description,
+                )
+
+            try:
+                amount = float(amount_raw)
+                if not math.isfinite(amount) or amount <= 0:
+                    raise ValueError
+            except ValueError:
+                return rerender("Enter a valid amount greater than 0.")
+
+            if category not in CATEGORIES:
+                return rerender("Select a valid category.")
+
+            try:
+                datetime.strptime(date_raw, "%Y-%m-%d")
+            except ValueError:
+                return rerender("Enter a valid date.")
+
+            if len(description) > 200:
+                return rerender("Description must be 200 characters or fewer.")
+
+            description = description or None
+
+            update_expense(
+                conn, id, session["user_id"], amount, category, date_raw, description
+            )
+
+            flash("Expense Updated", "success")
+            return redirect(url_for("profile"))
+
+        return render_template(
+            "edit_expense.html",
+            categories=CATEGORIES,
+            expense_id=id,
+            amount=expense["amount"],
+            category=expense["category"],
+            date=expense["date"],
+            description=expense["description"],
+        )
+    finally:
+        conn.close()
 
 
 @app.route("/expenses/<int:id>/delete")
@@ -334,13 +388,14 @@ def _get_recent_transactions(conn, user_id, limit=None, date_from=None, date_to=
     limit_clause = " LIMIT ?" if limit is not None else ""
     limit_params = [limit] if limit is not None else []
     rows = conn.execute(
-        "SELECT date, description, category, amount FROM expenses "
+        "SELECT id, date, description, category, amount FROM expenses "
         f"WHERE user_id = ?{clause} ORDER BY date DESC, id DESC{limit_clause}",
         [user_id, *clause_params, *limit_params],
     ).fetchall()
 
     return [
         {
+            "id": row["id"],
             "date": datetime.strptime(row["date"], "%Y-%m-%d").strftime("%d %b %Y"),
             "description": row["description"],
             "category": row["category"],
