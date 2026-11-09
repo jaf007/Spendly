@@ -84,7 +84,13 @@
                                 <td>{{ tx.description }}</td>
                                 <td><span class="badge badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
                                 <td class="tx-amount-col">{{ tx.amount }}</td>
-                                <td><a href="{{ url_for('edit_expense', id=tx.id) }}" class="tx-edit-link">Edit</a></td>
+                                <td>
+                                    <a href="{{ url_for('edit_expense', id=tx.id) }}" class="tx-edit-link">Edit</a>
+                                    <form method="POST" action="{{ url_for('delete_expense', id=tx.id) }}"
+                                          style="display:inline" onsubmit="return confirm('Delete this expense? This cannot be undone.')">
+                                        <button type="submit" class="tx-delete-link">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                             {% endfor %}
                             {% else %}
